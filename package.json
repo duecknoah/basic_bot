@@ -25,6 +25,8 @@
   "dependencies": {
     "data-store": "^3.1.0",
     "discord.js": "^11.4.2",
-    "logger": "0.0.1"
+    "ffmpeg-binaries": "^4.0.0",
+    "logger": "0.0.1",
+    "opusscript": "0.0.6"
   }
 }

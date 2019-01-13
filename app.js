@@ -27,7 +27,6 @@ client.on('message', oMsg => {
   if (!oCommand) {
     return;
   }
-
   // Get args from message
   let tokenizedInput = oMsg.content.substring(oCommand.command.name.length).trim().split(' ');
 
@@ -78,7 +77,12 @@ client.on('message', oMsg => {
     default:
       // Assume it is a custom command
       let sResp = oCommand.command.response;
-      oMsg.reply(oCommand.command.response);
+      let sScript = oCommand.command.script;
+      if (sResp) {
+        oMsg.reply(oCommand.command.response);
+      } else if (sScript) {
+        scriptCommand(oMsg, sScript);
+      }
   }
 });
 
@@ -105,7 +109,7 @@ function initStore() {
     store.set('commands', []);
   }
   if (!store.has('enabled_defaults')) {
-    store.set('enabled_defaults', ['$add', '$del', '$set', '$list', '$purge']);
+    store.set('enabled_defaults', ['$add', '$del', '$set', '$help', '$purge']);
   }
 
   return store;
@@ -125,11 +129,20 @@ function addCommand(sName, sResp) {
 }
 
 function setCommand(sName, sResp) {
-  store.set(`commands.${remDot(sName)}`, {
-    name: sName,
-    response: sResp,
-  });
-  return `Set \'${sName}\' command.`;
+  let sReply;
+  let oCommand = getCommandOf(sName);
+
+  if (oCommand && oCommand.command.script) {
+    sReply = 'Cannot overwrite commands with scripts';
+  } else {
+    store.set(`commands.${remDot(sName)}`, {
+      name: sName,
+      response: sResp,
+    });
+    sReply = `Set \'${sName}\' command.`;
+  }
+
+  return sReply;
 }
 
 function delCommand(sCommand) {
@@ -140,6 +153,8 @@ function delCommand(sCommand) {
     sReply = 'Command doesn\'t exist';
   } else if (matchedCommand.isDefault) {
     sReply = 'Cannot delete default commands';
+  } else if (matchedCommand.command.script) {
+    sReply = 'Cannot delete commands with scripts';
   } else {
     store.del(`commands.${remDot(matchedCommand.command.name)}`);
     sReply = `Deleted \'${matchedCommand.command.name}\' successfully`;
@@ -159,6 +174,18 @@ function purgeCommand(oMsg, sAmount) {
     .catch(console.error);
   } else {
     oMsg.reply('Error purging messages, make sure a proper number is entered');
+  }
+}
+
+function scriptCommand(oMsg, sScript) {
+  let script = require(`./scripts/${sScript}`);
+  if (script) {
+    script(client, oMsg).catch((ex) => {
+      oMsg.reply("There was a problem running the script");
+      console.log("Error running the script: " + ex);
+    });
+  } else {
+    oMsg.reply('Error: Script doesn\'t exist');
   }
 }
 
