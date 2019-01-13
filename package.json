@@ -1,0 +1,30 @@
+{
+  "name": "basic_bot",
+  "version": "1.0.0",
+  "description": "A very basic NodeJS discord bot that does the bear minimum.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/duecknoah/basic_bot.git"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "basic",
+    "nodejs"
+  ],
+  "author": "duecknoah",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/duecknoah/basic_bot/issues"
+  },
+  "homepage": "https://github.com/duecknoah/basic_bot#readme",
+  "dependencies": {
+    "data-store": "^3.1.0",
+    "discord.js": "^11.4.2",
+    "logger": "0.0.1"
+  }
+}
