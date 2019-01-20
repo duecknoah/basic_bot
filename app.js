@@ -1,6 +1,7 @@
 const TOKEN_PLACEHOLDER = 'TOKEN_HERE';
 const STORE_PATH = 'data.json';
 const MESSAGE_LOG_PATH = 'messages.log';
+const SCRIPT_PATH = './scripts/';
 
 const Discord = require('discord.js');
 const client = new Discord.Client();
@@ -10,7 +11,7 @@ const Store = require('data-store');
 const store = initStore();
 const aDefaultCommands = store.get('enabled_defaults');
 
-const remDot = (sCommand) => sCommand.replace(/\./g, '\\.');
+const remDot = sCommand => sCommand.replace(/\./g, '\\.');
 
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
@@ -79,7 +80,11 @@ client.on('message', oMsg => {
       let sResp = oCommand.command.response;
       let sScript = oCommand.command.script;
       if (sResp) {
-        oMsg.reply(oCommand.command.response);
+        oMsg.reply(oCommand.command.response).then(() => {
+          if (sScript) {
+            scriptCommand(oMsg, sScript);
+          }
+        });
       } else if (sScript) {
         scriptCommand(oMsg, sScript);
       }
@@ -178,15 +183,48 @@ function purgeCommand(oMsg, sAmount) {
 }
 
 function scriptCommand(oMsg, sScript) {
-  let script = require(`./scripts/${sScript}`);
+  const sScriptPath = SCRIPT_PATH + sScript;
+  let script = require(sScriptPath);
+  let sErrorResp;
+
   if (script) {
-    script(client, oMsg).catch((ex) => {
-      oMsg.reply("There was a problem running the script");
-      console.log("Error running the script: " + ex);
-    });
+    if (script instanceof Function) {
+      script(client, oMsg).catch((ex) => {
+        sErrorResp = `Error: Script \'${sScript}\' failed with exception: ${ex}`;
+      });
+    } else {
+      sErrorResp = `Error: Script \'${sScript}\' is not a function`;
+    }
   } else {
-    oMsg.reply('Error: Script doesn\'t exist');
+    sErrorResp = `Error: Script \'${sScript}\' doesn\'t exist`;
   }
+
+  if (sErrorResp) {
+    oMsg.reply(`There was a problem running the script, see console for details.`);
+    console.log(sErrorResp);
+  }
+}
+
+/**
+ * Initialize fs watchers for script files and 
+ * re-require them when any of them are updated.
+*/
+function initScriptWatchers() {
+  const fs = require('fs');
+  const commands = store.get('commands');
+  const commandsWScripts = (Object.values(commands || [])).filter(oCommand => {
+    return !!oCommand.script;
+  });
+
+  commandsWScripts.forEach((oCommand) => {
+    sScriptPath = SCRIPT_PATH + oCommand.script;
+    require(sScriptPath);
+    fs.watch(sScriptPath, () => {
+      // On file change, remove file from cache and 're-require'
+      delete require.cache[require.resolve(sScriptPath)];
+      require(sScriptPath);
+    });
+  })
 }
 
 function delay (t, v) {
@@ -227,5 +265,6 @@ function getCommandOf(sMsg) {
 }
 
 if (hasToken(store)) {
+  initScriptWatchers();
   client.login(store.get('token'));
 }
