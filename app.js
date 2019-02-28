@@ -8,8 +8,9 @@ const client = new Discord.Client();
 const messageLogger = require('logger').createLogger(MESSAGE_LOG_PATH);
 messageLogger.format = (level, date, sMsg) => `${date.toString()};${sMsg}`;
 const Store = require('data-store');
-const store = initStore();
-const aDefaultCommands = store.get('enabled_defaults');
+
+var store;
+var aDefaultCommands;
 
 const remDot = sCommand => sCommand.replace(/\./g, '\\.');
 
@@ -75,6 +76,11 @@ client.on('message', oMsg => {
         oMsg.reply('Improper usage\nExpected usage: $purge <numOfMessagesToRemove>');
       }
     break;
+    case '$restart':
+    // Restarts the bot
+      oMsg.reply('Restarting bot...');
+      restart();
+    break;
     default:
       // Assume it is a custom command
       let sResp = oCommand.command.response;
@@ -114,10 +120,15 @@ function initStore() {
     store.set('commands', []);
   }
   if (!store.has('enabled_defaults')) {
-    store.set('enabled_defaults', ['$add', '$del', '$set', '$help', '$purge']);
+    store.set('enabled_defaults', ['$add', '$del', '$set', '$help', '$purge', '$restart']);
   }
 
   return store;
+}
+
+function restart() {
+    client.destroy()
+    .then(() => main());
 }
 
 function addCommand(sName, sResp) {
@@ -138,7 +149,7 @@ function setCommand(sName, sResp) {
   let oCommand = getCommandOf(sName);
 
   if (oCommand && oCommand.command.script) {
-    sReply = 'Cannot overwrite commands with scripts';
+    sReply = 'Cannot overwrite commands that contain scripts';
   } else {
     store.set(`commands.${remDot(sName)}`, {
       name: sName,
@@ -189,7 +200,7 @@ function scriptCommand(oMsg, sScript) {
 
   if (script) {
     if (script instanceof Function) {
-      script(client, oMsg).catch((ex) => {
+      script(client, oMsg, this).catch((ex) => {
         sErrorResp = `Error: Script \'${sScript}\' failed with exception: ${ex}`;
       });
     } else {
@@ -201,30 +212,8 @@ function scriptCommand(oMsg, sScript) {
 
   if (sErrorResp) {
     oMsg.reply(`There was a problem running the script, see console for details.`);
-    console.log(sErrorResp);
+    console.error(sErrorResp);
   }
-}
-
-/**
- * Initialize fs watchers for script files and 
- * re-require them when any of them are updated.
-*/
-function initScriptWatchers() {
-  const fs = require('fs');
-  const commands = store.get('commands');
-  const commandsWScripts = (Object.values(commands || [])).filter(oCommand => {
-    return !!oCommand.script;
-  });
-
-  commandsWScripts.forEach((oCommand) => {
-    sScriptPath = SCRIPT_PATH + oCommand.script;
-    require(sScriptPath);
-    fs.watch(sScriptPath, () => {
-      // On file change, remove file from cache and 're-require'
-      delete require.cache[require.resolve(sScriptPath)];
-      require(sScriptPath);
-    });
-  })
 }
 
 function delay (t, v) {
@@ -264,7 +253,13 @@ function getCommandOf(sMsg) {
   return oRet;
 }
 
-if (hasToken(store)) {
-  initScriptWatchers();
-  client.login(store.get('token'));
+function main() {
+  store = initStore();
+  aDefaultCommands = store.get('enabled_defaults');
+
+  if (hasToken(store)) {
+    client.login(store.get('token'));
+  }
 }
+
+main();
