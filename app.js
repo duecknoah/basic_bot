@@ -195,24 +195,28 @@ function purgeCommand(oMsg, sAmount) {
 
 function scriptCommand(oMsg, sScript) {
   const sScriptPath = SCRIPT_PATH + sScript;
-  let script = require(sScriptPath);
   let sErrorResp;
+  try {
+    let script = require(sScriptPath).main;
 
-  if (script) {
-    if (script instanceof Function) {
-      script(client, oMsg, this).catch((ex) => {
-        sErrorResp = `Error: Script \'${sScript}\' failed with exception: ${ex}`;
-      });
+    if (script) {
+      if (script instanceof Function) {
+        script(client, oMsg, this).catch((ex) => {
+          sErrorResp = `Error: Script \'${sScript}\' failed with exception: ${ex}`;
+        });
+      } else {
+        sErrorResp = `Error: Script \'${sScript}\' is not a function`;
+      }
     } else {
-      sErrorResp = `Error: Script \'${sScript}\' is not a function`;
+      sErrorResp = `Error: Script \'${sScript}\' doesn\'t exist`;
     }
-  } else {
-    sErrorResp = `Error: Script \'${sScript}\' doesn\'t exist`;
-  }
-
-  if (sErrorResp) {
-    oMsg.reply(`There was a problem running the script, see console for details.`);
-    console.error(sErrorResp);
+  } catch (oEx) {
+    sErrorResp = oEx;
+  } finally {
+    if (sErrorResp) {
+      oMsg.reply(`There was a problem running the script, see console for details.`);
+      console.error(sErrorResp);
+    }
   }
 }
 
