@@ -33,77 +33,82 @@ client.on('message', oMsg => {
     return;
   }
   
-  oMsg.content = oMsg.content.substring(CMD_PREFIX.length); // Remove prefix
-  let oCommand = getCommandOf(oMsg.content);
+  try {
+    oMsg.content = oMsg.content.substring(CMD_PREFIX.length); // Remove prefix
+    let oCommand = getCommandOf(oMsg.content);
 
-  if (!oCommand) {
-    return;
-  }
-  // Get args from message
-  let tokenizedInput = oMsg.content.substring(oCommand.command.name.length).trim().split(' ');
+    if (!oCommand) {
+      return;
+    }
+    // Get args from message
+    let tokenizedInput = oMsg.content.substring(oCommand.command.name.length).trim().split(' ');
 
-  // Default commands
-  switch(oCommand.command.name) {
-    case 'add':
-    // Adds a custom command
-      if (tokenizedInput.length > 1) {
-        oMsg.reply(addCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
-      } else {
-        oMsg.reply('Improper usage\nExpected usage: $add <command> <reply...>');
-      }
-    break;
-    case 'set':
-    // Sets a custom command, overwriting an existing if need be
-      if (tokenizedInput.length > 1) {
-        oMsg.reply(setCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
-      } else {
-        oMsg.reply('Improper usage\nExpected usage: $set <command> <reply...>');
-      }
-    break;
-    case 'del':
-    // Deletes a custom command
-      if (tokenizedInput.length === 1) {
-        oMsg.reply(delCommand(tokenizedInput[0]));
-      } else {
-        oMsg.reply('Improper usage\nExpected usage: $del <command>');
-      }
-    break;
-    case 'help':
-    // Displays help page listing the commands
-      let sDefCommands = aDefaultCommands.join(', ');
-      let sCustCommands = '';
+    // Default commands
+    switch(oCommand.command.name) {
+      case 'add':
+      // Adds a custom command
+        if (tokenizedInput.length > 1) {
+          oMsg.reply(addCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
+        } else {
+          oMsg.reply('Improper usage\nExpected usage: $add <command> <reply...>');
+        }
+      break;
+      case 'set':
+      // Sets a custom command, overwriting an existing if need be
+        if (tokenizedInput.length > 1) {
+          oMsg.reply(setCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
+        } else {
+          oMsg.reply('Improper usage\nExpected usage: $set <command> <reply...>');
+        }
+      break;
+      case 'del':
+      // Deletes a custom command
+        if (tokenizedInput.length === 1) {
+          oMsg.reply(delCommand(tokenizedInput[0]));
+        } else {
+          oMsg.reply('Improper usage\nExpected usage: $del <command>');
+        }
+      break;
+      case 'help':
+      // Displays help page listing the commands
+        let sDefCommands = aDefaultCommands.join(', ');
+        let sCustCommands = '';
 
-      if (store.has('commands')) {
-        sCustCommands = Object.keys(store.get('commands')).join(', ');
-      } 
-      oMsg.reply(`\n**Normal** ${sDefCommands}\n**Custom**: ${sCustCommands}`);
-    break;
-    case 'purge':
-    // Removes a specified amount of messages from the channel
-      if (tokenizedInput.length === 1) {
-        purgeCommand(oMsg, tokenizedInput[0]);
-      } else {
-        oMsg.reply('Improper usage\nExpected usage: $purge <numOfMessagesToRemove>');
-      }
-    break;
-    case 'restart':
-    // Restarts the bot
-      oMsg.reply('Restarting bot...');
-      restart();
-    break;
-    default:
-      // Assume it is a custom command
-      let sResp = oCommand.command.response;
-      let sScript = oCommand.command.script;
-      if (sResp) {
-        oMsg.reply(oCommand.command.response).then(() => {
-          if (sScript) {
-            scriptCommand(oMsg, sScript);
-          }
-        });
-      } else if (sScript) {
-        scriptCommand(oMsg, sScript);
-      }
+        if (store.has('commands')) {
+          sCustCommands = Object.keys(store.get('commands')).join(', ');
+        }
+        oMsg.reply(`\n**Normal** ${sDefCommands}\n**Custom**: ${sCustCommands}`);
+      break;
+      case 'purge':
+      // Removes a specified amount of messages from the channel
+        if (tokenizedInput.length === 1) {
+          purgeCommand(oMsg, tokenizedInput[0]);
+        } else {
+          oMsg.reply('Improper usage\nExpected usage: $purge <numOfMessagesToRemove>');
+        }
+      break;
+      case 'restart':
+      // Restarts the bot
+        oMsg.reply('Restarting bot...');
+        restart();
+      break;
+      default:
+        // Assume it is a custom command
+        let sResp = oCommand.command.response;
+        let sScript = oCommand.command.script;
+        if (sResp) {
+          oMsg.reply(oCommand.command.response).then(() => {
+            if (sScript) {
+              scriptCommand(oMsg, sScript);
+            }
+          });
+        } else if (sScript) {
+          scriptCommand(oMsg, sScript);
+        }
+    }
+  } catch (oEx) {
+    console.error('Exception thrown! See error below');
+    console.trace(oEx);
   }
 });
 
