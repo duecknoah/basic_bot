@@ -8,6 +8,7 @@ const client = new Discord.Client();
 const messageLogger = require('logger').createLogger(MESSAGE_LOG_PATH);
 messageLogger.format = (level, date, sMsg) => `${date.toString()};${sMsg}`;
 const Store = require('data-store');
+const CMD_PREFIX = '$';
 
 var store;
 var aDefaultCommands;
@@ -24,6 +25,13 @@ client.on('message', oMsg => {
   if (oMsg.author.id === client.user.id) {
     return;
   }
+  
+  // Check if command is prefixed
+  if (!oMsg.content.startsWith(CMD_PREFIX)) {
+    return;
+  }
+  
+  oMsg.content = oMsg.content.substring(CMD_PREFIX.length); // Remove prefix
   let oCommand = getCommandOf(oMsg.content);
 
   if (!oCommand) {
@@ -34,7 +42,7 @@ client.on('message', oMsg => {
 
   // Default commands
   switch(oCommand.command.name) {
-    case '$add':
+    case 'add':
     // Adds a custom command
       if (tokenizedInput.length > 1) {
         oMsg.reply(addCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
@@ -42,7 +50,7 @@ client.on('message', oMsg => {
         oMsg.reply('Improper usage\nExpected usage: $add <command> <reply...>');
       }
     break;
-    case '$set':
+    case 'set':
     // Sets a custom command, overwriting an existing if need be
       if (tokenizedInput.length > 1) {
         oMsg.reply(setCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
@@ -50,7 +58,7 @@ client.on('message', oMsg => {
         oMsg.reply('Improper usage\nExpected usage: $set <command> <reply...>');
       }
     break;
-    case '$del':
+    case 'del':
     // Deletes a custom command
       if (tokenizedInput.length === 1) {
         oMsg.reply(delCommand(tokenizedInput[0]));
@@ -58,7 +66,7 @@ client.on('message', oMsg => {
         oMsg.reply('Improper usage\nExpected usage: $del <command>');
       }
     break;
-    case '$help':
+    case 'help':
     // Displays help page listing the commands
       let sDefCommands = aDefaultCommands.join(', ');
       let sCustCommands = '';
@@ -68,7 +76,7 @@ client.on('message', oMsg => {
       } 
       oMsg.reply(`\n**Normal** ${sDefCommands}\n**Custom**: ${sCustCommands}`);
     break;
-    case '$purge':
+    case 'purge':
     // Removes a specified amount of messages from the channel
       if (tokenizedInput.length === 1) {
         purgeCommand(oMsg, tokenizedInput[0]);
@@ -76,7 +84,7 @@ client.on('message', oMsg => {
         oMsg.reply('Improper usage\nExpected usage: $purge <numOfMessagesToRemove>');
       }
     break;
-    case '$restart':
+    case 'restart':
     // Restarts the bot
       oMsg.reply('Restarting bot...');
       restart();
@@ -120,7 +128,7 @@ function initStore() {
     store.set('commands', []);
   }
   if (!store.has('enabled_defaults')) {
-    store.set('enabled_defaults', ['$add', '$del', '$set', '$help', '$purge', '$restart']);
+    store.set('enabled_defaults', ['add', 'del', 'set', 'help', 'purge', 'restart']);
   }
 
   return store;
