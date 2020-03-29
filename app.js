@@ -8,6 +8,8 @@ const client = new Discord.Client();
 const messageLogger = require('logger').createLogger(MESSAGE_LOG_PATH);
 messageLogger.format = (level, date, sMsg) => `${date.toString()};${sMsg}`;
 const Store = require('data-store');
+const Nltk = require('nltk');
+const Nltk_ngram = new Nltk.ngram(2);
 const CMD_PREFIX = '$';
 
 var store;
@@ -25,7 +27,7 @@ client.on('message', oMsg => {
   if (oMsg.author.id === client.user.id) {
     return;
   }
-  
+
   // Check if command is prefixed
   if (!oMsg.content.startsWith(CMD_PREFIX)) {
     return;
@@ -234,31 +236,59 @@ function delay (t, v) {
   });
 }
 
+// Returns the closest (via Levenstein's distance) string match from the array of 
+// strings (aCompare). Returns null if no close matches
+function getClosestString(str, aCompare) {
+  let closestDist = 0;
+  let closestString = null;
+  const minThreshold = 0.7; // minimum % match to be considered a similar string
+
+  // Find closest String
+  aCompare.find(sCompare => {
+    let dist = Nltk_ngram.sim(str, sCompare);
+    if (dist >= minThreshold && dist > closestDist) {
+      closestDist = dist;
+      closestString = sCompare;
+    }
+  });
+
+  return closestString;
+}
+
+// A wrapper function for getClosestString to allow command
+// objects to be compared. The closest match will return the
+// closest matched command object. Returns null if no close matches
+function getClosestCommand(sCommandName, aCompareCommands) {
+  let closestKey = getClosestString(sCommandName, Object.keys(aCompareCommands));
+  return (closestKey) ? aCompareCommands[closestKey] : null;
+}
+
 function getCommandOf(sMsg) {
   let sMsgCommand = sMsg.split(' ')[0];
-  let oMatchedCommand = aDefaultCommands.find(sCommand => sMsgCommand === sCommand);
+  let sMatchedCommand = getClosestString(sMsgCommand, aDefaultCommands);
   let oRet;
 
   // If matched right away, it is a default command
-  if (oMatchedCommand) {
+  if (sMatchedCommand) {
     oRet = {
       command: {
-        name: oMatchedCommand,
+        name: sMatchedCommand,
       },
       isDefault: true,
-    }
+    };
   } else {
     // Custom command
     if (!store.has('commands')) {
       return;
     }
 
-    let oMatchedCommand = store.get(`commands.${remDot(sMsgCommand)}`);
+    let oMatchedCommand = getClosestCommand(sMsgCommand, store.get('commands'));
+
     if (oMatchedCommand) {
       oRet = {
         command: oMatchedCommand,
         isDefault: false,
-      }
+      };
     }
   }
 
