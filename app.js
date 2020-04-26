@@ -63,7 +63,7 @@ client.on('message', oMsg => {
       break;
       case 'del':
       // Deletes a custom command
-        if (tokenizedInput.length > 1) {
+        if (tokenizedInput.length === 1) {
           oMsg.reply(delCommand(tokenizedInput[0]));
         } else {
           oMsg.reply('Improper usage\nExpected usage: $del <command>');
