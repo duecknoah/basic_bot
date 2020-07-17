@@ -8,6 +8,9 @@ const client = new Discord.Client();
 const messageLogger = require('logger').createLogger(MESSAGE_LOG_PATH);
 messageLogger.format = (level, date, sMsg) => `${date.toString()};${sMsg}`;
 const Store = require('data-store');
+const Nltk = require('nltk');
+const Nltk_ngram = new Nltk.ngram(2);
+const CMD_PREFIX = '$';
 
 var store;
 var aDefaultCommands;
@@ -24,76 +27,88 @@ client.on('message', oMsg => {
   if (oMsg.author.id === client.user.id) {
     return;
   }
-  let oCommand = getCommandOf(oMsg.content);
 
-  if (!oCommand) {
+  // Check if command is prefixed
+  if (!oMsg.content.startsWith(CMD_PREFIX)) {
     return;
   }
-  // Get args from message
-  let tokenizedInput = oMsg.content.substring(oCommand.command.name.length).trim().split(' ');
+  
+  try {
+    oMsg.content = oMsg.content.substring(CMD_PREFIX.length); // Remove prefix
+    let oCommand = getCommandOf(oMsg.content);
 
-  // Default commands
-  switch(oCommand.command.name) {
-    case '$add':
-    // Adds a custom command
-      if (tokenizedInput.length > 1) {
-        oMsg.reply(addCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
-      } else {
-        oMsg.reply('Improper usage\nExpected usage: $add <command> <reply...>');
-      }
-    break;
-    case '$set':
-    // Sets a custom command, overwriting an existing if need be
-      if (tokenizedInput.length > 1) {
-        oMsg.reply(setCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
-      } else {
-        oMsg.reply('Improper usage\nExpected usage: $set <command> <reply...>');
-      }
-    break;
-    case '$del':
-    // Deletes a custom command
-      if (tokenizedInput.length === 1) {
-        oMsg.reply(delCommand(tokenizedInput[0]));
-      } else {
-        oMsg.reply('Improper usage\nExpected usage: $del <command>');
-      }
-    break;
-    case '$help':
-    // Displays help page listing the commands
-      let sDefCommands = aDefaultCommands.join(', ');
-      let sCustCommands = '';
+    if (!oCommand) {
+      return;
+    }
+    // Get args from message
+    let tokenizedInput = oMsg.content.substring(oCommand.command.name.length).trim().split(' ');
 
-      if (store.has('commands')) {
-        sCustCommands = Object.keys(store.get('commands')).join(', ');
-      } 
-      oMsg.reply(`\n**Normal** ${sDefCommands}\n**Custom**: ${sCustCommands}`);
-    break;
-    case '$purge':
-    // Removes a specified amount of messages from the channel
-      if (tokenizedInput.length === 1) {
-        purgeCommand(oMsg, tokenizedInput[0]);
-      } else {
-        oMsg.reply('Improper usage\nExpected usage: $purge <numOfMessagesToRemove>');
-      }
-    break;
-    case '$restart':
-    // Restarts the bot
-      oMsg.reply('Restarting bot...');
-      restart();
-    break;
-    default:
-      // Assume it is a custom command
-      let sResp = oCommand.command.response;
-      let sScript = oCommand.command.script;
-      if (sResp) {
-        oMsg.reply(oCommand.command.response).then(() => {
-          if (sScript) {
-            scriptCommand(oMsg, sScript);
-          }
-        });
-      } else if (sScript) {
-        scriptCommand(oMsg, sScript);
-      }
+    // Default commands
+    switch(oCommand.command.name) {
+      case 'add':
+      // Adds a custom command
+        if (tokenizedInput.length > 1) {
+          oMsg.reply(addCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
+        } else {
+          oMsg.reply('Improper usage\nExpected usage: $add <command> <reply...>');
+        }
+      break;
+      case 'set':
+      // Sets a custom command, overwriting an existing if need be
+        if (tokenizedInput.length > 1) {
+          oMsg.reply(setCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
+        } else {
+          oMsg.reply('Improper usage\nExpected usage: $set <command> <reply...>');
+        }
+      break;
+      case 'del':
+      // Deletes a custom command
+        if (tokenizedInput.length === 1) {
+          oMsg.reply(delCommand(tokenizedInput[0]));
+        } else {
+          oMsg.reply('Improper usage\nExpected usage: $del <command>');
+        }
+      break;
+      case 'help':
+      // Displays help page listing the commands
+        let sDefCommands = aDefaultCommands.join(', ');
+        let sCustCommands = '';
+
+        if (store.has('commands')) {
+          sCustCommands = Object.keys(store.get('commands')).join(', ');
+        }
+        oMsg.reply(`\n**Normal** ${sDefCommands}\n**Custom**: ${sCustCommands}`);
+      break;
+      case 'purge':
+      // Removes a specified amount of messages from the channel
+        if (tokenizedInput.length > 1) {
+          purgeCommand(oMsg, tokenizedInput[0]);
+        } else {
+          oMsg.reply('Improper usage\nExpected usage: $purge <numOfMessagesToRemove>');
+        }
+      break;
+      case 'restart':
+      // Restarts the bot
+        oMsg.reply('Restarting bot...');
+        restart();
+      break;
+      default:
+        // Assume it is a custom command
+        let sResp = oCommand.command.response;
+        let sScript = oCommand.command.script;
+        if (sResp) {
+          oMsg.reply(oCommand.command.response).then(() => {
+            if (sScript) {
+              scriptCommand(oMsg, sScript);
+            }
+          });
+        } else if (sScript) {
+          scriptCommand(oMsg, sScript);
+        }
+    }
+  } catch (oEx) {
+    console.error('Exception thrown! See error below');
+    console.trace(oEx);
   }
 });
 
@@ -120,7 +135,7 @@ function initStore() {
     store.set('commands', []);
   }
   if (!store.has('enabled_defaults')) {
-    store.set('enabled_defaults', ['$add', '$del', '$set', '$help', '$purge', '$restart']);
+    store.set('enabled_defaults', ['add', 'del', 'set', 'help', 'purge', 'restart']);
   }
 
   return store;
@@ -226,31 +241,71 @@ function delay (t, v) {
   });
 }
 
+// Returns the closest (via Levenstein's distance) string match from the array of 
+// strings (aCompare). Returns null if no close matches
+function getClosestString(str, aCompare) {
+  let closestDist = 0;
+  let closestString = null;
+  let closestMatchCount = 0; // Number of closest matches that are equally close
+  const minThreshold = 0.7; // minimum % match to be considered a similar string
+
+  // Find closest String
+  aCompare.find(sCompare => {
+    let dist = Nltk_ngram.sim(str, sCompare);
+    if (dist >= minThreshold) {
+      if (dist == closestDist) {
+        closestMatchCount ++;
+      }
+      if (dist > closestDist) {
+        closestDist = dist;
+        closestString = sCompare;
+        closestMatchCount = 1;
+      }
+    }
+  });
+
+  // If there are multiple equally close matches, then there is no clear closest string
+  if (closestMatchCount > 1) {
+    closestString = null;
+  }
+
+  return closestString;
+}
+
+// A wrapper function for getClosestString to allow command
+// objects to be compared. The closest match will return the
+// closest matched command object. Returns null if no close matches
+function getClosestCommand(sCommandName, aCompareCommands) {
+  let closestKey = getClosestString(sCommandName, Object.keys(aCompareCommands));
+  return (closestKey) ? aCompareCommands[closestKey] : null;
+}
+
 function getCommandOf(sMsg) {
   let sMsgCommand = sMsg.split(' ')[0];
-  let oMatchedCommand = aDefaultCommands.find(sCommand => sMsgCommand === sCommand);
+  let sMatchedCommand = getClosestString(sMsgCommand, aDefaultCommands);
   let oRet;
 
   // If matched right away, it is a default command
-  if (oMatchedCommand) {
+  if (sMatchedCommand) {
     oRet = {
       command: {
-        name: oMatchedCommand,
+        name: sMatchedCommand,
       },
       isDefault: true,
-    }
+    };
   } else {
     // Custom command
     if (!store.has('commands')) {
       return;
     }
 
-    let oMatchedCommand = store.get(`commands.${remDot(sMsgCommand)}`);
+    let oMatchedCommand = getClosestCommand(sMsgCommand, store.get('commands'));
+
     if (oMatchedCommand) {
       oRet = {
         command: oMatchedCommand,
         isDefault: false,
-      }
+      };
     }
   }
 
