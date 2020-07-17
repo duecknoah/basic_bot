@@ -1,4 +1,4 @@
-# basic_bot
+# :robot:basic_bot 
 A NodeJS discord bot that does what you need while allowing for your custom JS scripts.
 
 ## Setup
@@ -18,5 +18,5 @@ Commands must always start with $
 **$<custom_command>** - runs custom command.<br />
 **$restart** - restarts bot
 
-### Scripts (advanced)
+### :clipboard:Scripts (advanced)
 You can have commands that run your very own JS scripts. See the [example script](https://github.com/duecknoah/basic_bot/blob/master/scripts/example_script.js)
