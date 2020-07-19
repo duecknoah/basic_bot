@@ -12,11 +12,13 @@ Commands must always start with $
 
 ### Default Commands
 **$help** - lists available commands.<br />
+**$help <command_name>** - lists help message for command.<br />
 **$add <command_name> <reply...>** - adds new command. <br />
 **$set <command_name> <reply...>** - overrwrites existing command reply <br />
 **$del <command>** - deletes command
 **$<custom_command>** - runs custom command.<br />
-**$restart** - restarts bot
+**$restart** - restarts bot <br />
+**$sethelp** - sets help message for a custom command.<br />
 
 ### :clipboard:Scripts (advanced)
 You can have commands that run your very own JS scripts. See the [example script](https://github.com/duecknoah/basic_bot/blob/master/scripts/example_script.js)
