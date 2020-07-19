@@ -74,7 +74,6 @@ client.on('message', oMsg => {
       // Displays help page listing the commands
         if (tokenizedInput.length === 1) {
           // Specific command help listing for custom commands
-          console.log(tokenizedInput);
           let cmdStrPath = `commands.${remDot(tokenizedInput[0])}`;
           if (store.has(cmdStrPath) && store.has(`${cmdStrPath}.help_msg`)) {
             let help_msg = store.get(`${cmdStrPath}.help_msg`);
@@ -110,7 +109,6 @@ client.on('message', oMsg => {
       case 'sethelp':
         // Sets help message for custom commands
         if (tokenizedInput.length > 1) {
-          console.log(tokenizedInput);
           oMsg.reply(setHelpCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
         } else {
           oMsg.reply('Improper usage\nExpected usage: $sethelp <command> <help_msg...>')
