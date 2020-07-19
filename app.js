@@ -107,6 +107,14 @@ client.on('message', oMsg => {
         oMsg.reply('Restarting bot...');
         restart();
       break;
+      case 'sethelp':
+        // Sets help message for custom commands
+        if (tokenizedInput.length > 1) {
+          console.log(tokenizedInput);
+          oMsg.reply(setHelpCommand(tokenizedInput[0], tokenizedInput.slice(1).join(' ')));
+        } else {
+          oMsg.reply('Improper usage\nExpected usage: $sethelp <command> <help_msg...>')
+        }
       default:
         // Assume it is a custom command
         let sResp = oCommand.command.response;
@@ -150,7 +158,7 @@ function initStore() {
     store.set('commands', []);
   }
   if (!store.has('enabled_defaults')) {
-    store.set('enabled_defaults', ['add', 'del', 'set', 'help', 'purge', 'restart']);
+    store.set('enabled_defaults', ['add', 'del', 'set', 'help', 'purge', 'restart', 'sethelp']);
   }
 
   return store;
@@ -221,6 +229,24 @@ function purgeCommand(oMsg, sAmount) {
   } else {
     oMsg.reply('Error purging messages, make sure a proper number is entered');
   }
+}
+
+function setHelpCommand(sName, sHelpMsg) {
+  let sReply;
+  let matchedCommand = getCommandOf(sName);
+
+  if (!matchedCommand) {
+    sReply = 'Command doesn\'t exist';
+  } else if (matchedCommand.isDefault) {
+    sReply = 'Cannot set help message for default commands';
+  } else if (matchedCommand.command.script) {
+    sReply = 'Cannot set help message for commands with scripts';
+  } else {
+    store.set(`commands.${remDot(sName)}.help_msg`, sHelpMsg);
+    sReply = `Set help message for \'${sName}\' command.`;
+  }
+
+  return sReply;
 }
 
 function scriptCommand(oMsg, sScript) {
