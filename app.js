@@ -32,7 +32,7 @@ client.on('message', oMsg => {
   if (!oMsg.content.startsWith(CMD_PREFIX)) {
     return;
   }
-  
+
   try {
     oMsg.content = oMsg.content.substring(CMD_PREFIX.length); // Remove prefix
     let oCommand = getCommandOf(oMsg.content);
@@ -41,7 +41,8 @@ client.on('message', oMsg => {
       return;
     }
     // Get args from message
-    let tokenizedInput = oMsg.content.substring(oCommand.command.name.length).trim().split(' ');
+    let tokenizedInput = oMsg.content.substring(oCommand.command.name.length).trim();
+    tokenizedInput = (tokenizedInput === '') ? [] : tokenizedInput.split(' '); // forces empty array if no tokens after command name
 
     // Default commands
     switch(oCommand.command.name) {
@@ -71,13 +72,27 @@ client.on('message', oMsg => {
       break;
       case 'help':
       // Displays help page listing the commands
-        let sDefCommands = aDefaultCommands.join(', ');
-        let sCustCommands = '';
+        if (tokenizedInput.length === 1) {
+          // Specific command help listing for custom commands
+          console.log(tokenizedInput);
+          let cmdStrPath = `commands.${remDot(tokenizedInput[0])}`;
+          if (store.has(cmdStrPath) && store.has(`${cmdStrPath}.help_msg`)) {
+            let help_msg = store.get(`${cmdStrPath}.help_msg`);
+            oMsg.reply(help_msg);
+          } else {
+            oMsg.reply(`No help message for command '${tokenizedInput[0]}'`);
+          }
+        } else {
+          // Default help listing of all commands
+          let sDefCommands = aDefaultCommands.join(', ');
+          let sCustCommands = '';
 
-        if (store.has('commands')) {
-          sCustCommands = Object.keys(store.get('commands')).join(', ');
+          if (store.has('commands')) {
+            sCustCommands = Object.keys(store.get('commands')).join(', ');
+          }
+          oMsg.reply(`\n**Normal** ${sDefCommands}\n**Custom**: ${sCustCommands}`);
         }
-        oMsg.reply(`\n**Normal** ${sDefCommands}\n**Custom**: ${sCustCommands}`);
+
       break;
       case 'purge':
       // Removes a specified amount of messages from the channel
@@ -241,7 +256,7 @@ function delay (t, v) {
   });
 }
 
-// Returns the closest (via Levenstein's distance) string match from the array of 
+// Returns the closest (via Levenstein's distance) string match from the array of
 // strings (aCompare). Returns null if no close matches
 function getClosestString(str, aCompare) {
   let closestDist = 0;
